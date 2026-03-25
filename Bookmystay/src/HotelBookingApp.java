@@ -1,31 +1,31 @@
-abstract class Room {
-    String type;
-    int beds;
-    double price;
-
-    Room(String t, int b, double p) {
-        this.type = t;
-        this.beds = b;
-        this.price = p;
+import java.util.HashMap;
+import java.util.Map;
+class RoomInv {
+    private Map<String, Integer> inv = new HashMap<>();
+    public RoomInv() {
+        inv.put("Single", 5);
+        inv.put("Double", 3);
+        inv.put("Suite", 2);
     }
-    void show() {
-        System.out.println(type + " Room | " + beds + " Bed(s) | $" + price);
+    public int get(String t) {
+        return inv.getOrDefault(t, 0);
+    }
+    public void set(String t, int q) {
+        if (inv.containsKey(t)) inv.put(t, q);
+    }
+    public void disp() {
+        System.out.println("--- Inv Status ---");
+        inv.forEach((k, v) -> System.out.println(k + ": " + v));
+        System.out.println("------------------");
     }
 }
-class Sgl extends Room { Sgl() { super("Single", 1, 100.0); } }
-class Dbl extends Room { Dbl() { super("Double", 2, 180.0); } }
-class Ste extends Room { Ste() { super("Suite", 3, 350.0); } }
-public class UseCase2RoomInitialization {
+public class Main {
     public static void main(String[] args) {
-        System.out.println("--- Book My Stay v2.0 ---");
-        Room r1 = new Sgl();
-        Room r2 = new Dbl();
-        Room r3 = new Ste();
-        int q1 = 5, q2 = 3, q3 = 2;
-        r1.show(); System.out.println("Left: " + q1);
-        System.out.println("---");
-        r2.show(); System.out.println("Left: " + q2);
-        System.out.println("---");
-        r3.show(); System.out.println("Left: " + q3);
+        System.out.println("Book My Stay v3.0\n");
+        RoomInv ri = new RoomInv();
+        ri.disp();
+        System.out.println("\nBooking 1 Suite...");
+        ri.set("Suite", ri.get("Suite") - 1);
+        ri.disp();
     }
 }
