@@ -1,113 +1,97 @@
 import java.util.*;
 
-// Reservation class
-class Reservation {
+// Custom Exception
+class InvalidBookingException extends Exception {
 
-    String reservationId;
-    String customerName;
-    String roomType;
-
-    Reservation(String reservationId,
-                String customerName,
-                String roomType) {
-
-        this.reservationId = reservationId;
-        this.customerName = customerName;
-        this.roomType = roomType;
-    }
-
-    public String toString() {
-        return reservationId + " | "
-                + customerName + " | "
-                + roomType;
+    InvalidBookingException(String message) {
+        super(message);
     }
 }
 
 
+// Validator class
+class InvalidBookingValidator {
 
-// Booking History
-class BookingHistory {
+    public static void validate(
+            String customerName,
+            String roomType,
+            Map<String, Integer> inventory
+    ) throws InvalidBookingException {
 
-    // maintains insertion order
-    LinkedList<Reservation> history =
-            new LinkedList<>();
+        // check name
+        if (customerName == null
+                || customerName.isEmpty()) {
 
-
-    // add confirmed booking
-    public void addReservation(
-            Reservation r) {
-
-        history.add(r);
-
-        System.out.println(
-                "Added to history → "
-                        + r.reservationId
-        );
-    }
-
-
-    // get all reservations
-    public List<Reservation> getAll() {
-        return history;
-    }
-}
-
-
-
-// Report Service
-class BookingReportService {
-
-    BookingHistory history;
-
-    BookingReportService(
-            BookingHistory history) {
-
-        this.history = history;
-    }
-
-
-    // show all bookings
-    public void showAllBookings() {
-
-        System.out.println(
-                "\nBooking History Report"
-        );
-
-        for (Reservation r :
-                history.getAll()) {
-
-            System.out.println(r);
-        }
-    }
-
-
-    // count by room type
-    public void countByRoomType() {
-
-        HashMap<String, Integer> map =
-                new HashMap<>();
-
-        for (Reservation r :
-                history.getAll()) {
-
-            map.put(
-                    r.roomType,
-                    map.getOrDefault(
-                            r.roomType, 0
-                    ) + 1
+            throw new InvalidBookingException(
+                    "Customer name cannot be empty"
             );
         }
 
-        System.out.println(
-                "\nRoom Type Report"
-        );
+        // check room type exists
+        if (!inventory.containsKey(roomType)) {
 
-        for (String type :
-                map.keySet()) {
+            throw new InvalidBookingException(
+                    "Invalid room type"
+            );
+        }
+
+        // check availability
+        if (inventory.get(roomType) <= 0) {
+
+            throw new InvalidBookingException(
+                    "Room not available"
+            );
+        }
+    }
+}
+
+
+
+// Booking Service
+class SafeBookingService {
+
+    Map<String, Integer> inventory =
+            new HashMap<>();
+
+
+    SafeBookingService() {
+
+        inventory.put("Single", 2);
+        inventory.put("Double", 1);
+    }
+
+
+    public void bookRoom(
+            String name,
+            String roomType) {
+
+        try {
+
+            // validation
+            InvalidBookingValidator.validate(
+                    name,
+                    roomType,
+                    inventory
+            );
+
+            // allocate
+            inventory.put(
+                    roomType,
+                    inventory.get(roomType) - 1
+            );
 
             System.out.println(
-                    type + " → "
-                            + map.get(type)
+                    "Booking confirmed for "
+                            + name
+                            + " | "
+                            + roomType
+            );
+
+        } catch (InvalidBookingException e) {
+
+            System.out.println(
+                    "Booking Failed → "
+                            + e.getMessage()
             );
         }
     }
@@ -115,49 +99,37 @@ class BookingReportService {
 
 
 
-// Demo / Admin
-public class BookingHistoryDemo {
+// Demo
+public class ValidationDemo {
 
     public static void main(String[] args) {
 
-        BookingHistory history =
-                new BookingHistory();
+        SafeBookingService service =
+                new SafeBookingService();
 
-        BookingReportService report =
-                new BookingReportService(
-                        history
-                );
-
-
-        // confirmed bookings
-        history.addReservation(
-                new Reservation(
-                        "R101",
-                        "Aman",
-                        "Single"
-                )
+        service.bookRoom(
+                "Aman",
+                "Single"
         );
 
-        history.addReservation(
-                new Reservation(
-                        "R102",
-                        "Rahul",
-                        "Double"
-                )
+        service.bookRoom(
+                "",
+                "Single"
         );
 
-        history.addReservation(
-                new Reservation(
-                        "R103",
-                        "Neha",
-                        "Single"
-                )
+        service.bookRoom(
+                "Rahul",
+                "Suite"
         );
 
+        service.bookRoom(
+                "Neha",
+                "Double"
+        );
 
-        // admin requests report
-        report.showAllBookings();
-
-        report.countByRoomType();
+        service.bookRoom(
+                "Priya",
+                "Double"
+        );
     }
 }
