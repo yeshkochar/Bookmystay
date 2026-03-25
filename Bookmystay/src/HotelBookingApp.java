@@ -1,175 +1,202 @@
 import java.util.*;
 
 
-// Reservation class
-class Reservation {
+// Booking Request
+class BookingRequest {
 
-    String reservationId;
+    String name;
     String roomType;
-    String roomId;
 
-    Reservation(String reservationId,
-                String roomType,
-                String roomId) {
-
-        this.reservationId = reservationId;
+    BookingRequest(String name, String roomType) {
+        this.name = name;
         this.roomType = roomType;
-        this.roomId = roomId;
     }
 }
 
 
 
-// Booking History
-class BookingHistory {
-
-    Map<String, Reservation> history =
-            new HashMap<>();
-
-    public void add(Reservation r) {
-        history.put(r.reservationId, r);
-    }
-
-    public Reservation get(String id) {
-        return history.get(id);
-    }
-
-    public void remove(String id) {
-        history.remove(id);
-    }
-}
-
-
-
-// Inventory Service
+// Shared Inventory
 class InventoryService {
 
     Map<String, Integer> inventory =
             new HashMap<>();
 
     InventoryService() {
-        inventory.put("Single", 1);
+        inventory.put("Single", 2);
         inventory.put("Double", 1);
     }
 
-    public void increase(String type) {
-        inventory.put(
-                type,
-                inventory.get(type) + 1
-        );
-    }
 
-    public void decrease(String type) {
-        inventory.put(
-                type,
-                inventory.get(type) - 1
-        );
+    // critical section
+    public synchronized boolean allocate(
+            String roomType) {
+
+        if (inventory.get(roomType) > 0) {
+
+            inventory.put(
+                    roomType,
+                    inventory.get(roomType) - 1
+            );
+
+            return true;
+        }
+
+        return false;
     }
 }
 
 
 
-// Cancellation Service
-class CancellationService {
+// Shared Queue
+class BookingQueue {
 
-    BookingHistory history;
+    Queue<BookingRequest> queue =
+            new LinkedList<>();
+
+
+    public synchronized void add(
+            BookingRequest r) {
+
+        queue.add(r);
+    }
+
+
+    public synchronized BookingRequest get() {
+
+        if (queue.isEmpty())
+            return null;
+
+        return queue.poll();
+    }
+}
+
+
+
+// Processor Thread
+class BookingProcessor extends Thread {
+
+    BookingQueue queue;
     InventoryService inventory;
 
-    // rollback stack (LIFO)
-    Stack<String> rollbackStack =
-            new Stack<>();
-
-
-    CancellationService(
-            BookingHistory h,
+    BookingProcessor(
+            BookingQueue q,
             InventoryService i) {
 
-        history = h;
+        queue = q;
         inventory = i;
     }
 
 
-    public void cancel(String reservationId) {
+    public void run() {
 
-        // validate
-        Reservation r =
-                history.get(reservationId);
+        while (true) {
 
-        if (r == null) {
+            BookingRequest r =
+                    queue.get();
 
-            System.out.println(
-                    "Cancellation Failed → Not found"
-            );
-            return;
+            if (r == null)
+                break;
+
+            boolean ok =
+                    inventory.allocate(
+                            r.roomType
+                    );
+
+            if (ok) {
+
+                System.out.println(
+                        Thread.currentThread()
+                                .getName()
+                                + " booked "
+                                + r.roomType
+                                + " for "
+                                + r.name
+                );
+
+            } else {
+
+                System.out.println(
+                        Thread.currentThread()
+                                .getName()
+                                + " failed for "
+                                + r.name
+                );
+            }
         }
-
-
-        // push to stack (rollback record)
-        rollbackStack.push(r.roomId);
-
-
-        // restore inventory
-        inventory.increase(r.roomType);
-
-
-        // remove from history
-        history.remove(reservationId);
-
-
-        System.out.println(
-                "Cancelled → "
-                        + reservationId
-        );
-    }
-
-
-    // show rollback stack
-    public void showRollback() {
-
-        System.out.println(
-                "Rollback Stack: "
-                        + rollbackStack
-        );
     }
 }
 
 
 
 // Demo
-public class CancellationDemo {
+public class ConcurrentBookingDemo {
 
-    public static void main(String[] args) {
+    public static void main(String[] args)
+            throws Exception {
 
-        BookingHistory history =
-                new BookingHistory();
+        BookingQueue queue =
+                new BookingQueue();
 
         InventoryService inventory =
                 new InventoryService();
 
-        CancellationService cancel =
-                new CancellationService(
-                        history,
-                        inventory
+
+        // multiple guests
+        queue.add(
+                new BookingRequest(
+                        "Aman", "Single"
+                )
+        );
+
+        queue.add(
+                new BookingRequest(
+                        "Rahul", "Single"
+                )
+        );
+
+        queue.add(
+                new BookingRequest(
+                        "Neha", "Single"
+                )
+        );
+
+        queue.add(
+                new BookingRequest(
+                        "Priya", "Double"
+                )
+        );
+
+
+
+        // multiple threads
+        BookingProcessor t1 =
+                new BookingProcessor(
+                        queue, inventory
+                );
+
+        BookingProcessor t2 =
+                new BookingProcessor(
+                        queue, inventory
+                );
+
+        BookingProcessor t3 =
+                new BookingProcessor(
+                        queue, inventory
                 );
 
 
-        // confirmed bookings
-        Reservation r1 =
-                new Reservation(
-                        "R101",
-                        "Single",
-                        "S1"
-                );
-
-        history.add(r1);
-        inventory.decrease("Single");
+        t1.start();
+        t2.start();
+        t3.start();
 
 
-        // cancel
-        cancel.cancel("R101");
+        t1.join();
+        t2.join();
+        t3.join();
 
-        cancel.cancel("R200"); // invalid
 
-        cancel.showRollback();
+        System.out.println(
+                "All bookings processed safely"
+        );
     }
 }
