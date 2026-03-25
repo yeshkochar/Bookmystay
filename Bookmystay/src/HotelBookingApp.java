@@ -1,31 +1,30 @@
-import java.util.HashMap;
-import java.util.Map;
-class RoomInv {
-    private Map<String, Integer> inv = new HashMap<>();
-    public RoomInv() {
-        inv.put("Single", 5);
-        inv.put("Double", 3);
-        inv.put("Suite", 2);
-    }
-    public int get(String t) {
-        return inv.getOrDefault(t, 0);
-    }
-    public void set(String t, int q) {
-        if (inv.containsKey(t)) inv.put(t, q);
-    }
-    public void disp() {
-        System.out.println("--- Inv Status ---");
-        inv.forEach((k, v) -> System.out.println(k + ": " + v));
-        System.out.println("------------------");
+import java.util.*;
+
+abstract class Rm {
+    String t; int b; double p;
+    Rm(String t, int b, double p) { this.t = t; this.b = b; this.p = p; }
+    void disp() { System.out.println(t + " | " + b + " Bed | $" + p); }
+}
+class Sgl extends Rm { Sgl() { super("Single", 1, 100); } }
+class Dbl extends Rm { Dbl() { super("Double", 2, 180); } }
+class Ste extends Rm { Ste() { super("Suite", 3, 350); } }
+class Inv {
+    Map<String, Integer> m = new HashMap<>();
+    Inv() { m.put("Single", 5); m.put("Double", 0); m.put("Suite", 2); }
+}
+class Srch {
+    void run(Inv i, List<Rm> list) {
+        System.out.println("Available Rooms");
+        list.stream().filter(r -> i.m.getOrDefault(r.t, 0) > 0).forEach(r -> {
+            r.disp();
+            System.out.println("Stock: " + i.m.get(r.t) + "\n");
+        });
     }
 }
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Book My Stay v3.0\n");
-        RoomInv ri = new RoomInv();
-        ri.disp();
-        System.out.println("\nBooking 1 Suite...");
-        ri.set("Suite", ri.get("Suite") - 1);
-        ri.disp();
+        Inv i = new Inv();
+        List<Rm> catalog = Arrays.asList(new Sgl(), new Dbl(), new Ste());
+        new Srch().run(i, catalog);
     }
 }
